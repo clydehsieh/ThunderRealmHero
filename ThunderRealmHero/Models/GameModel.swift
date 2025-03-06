@@ -95,6 +95,7 @@ class GameModel: ObservableObject {
         }
         
         revealCellRecursively(row: row, col: col)
+        checkAndRevealSafeCells()
         checkWinCondition()
     }
     
@@ -139,5 +140,59 @@ class GameModel: ObservableObject {
             }
         }
         gameStatus = .won
+    }
+    
+    private func checkAndRevealSafeCells() {
+        var madeProgress: Bool
+        repeat {
+            madeProgress = false
+            for row in 0..<rows {
+                for col in 0..<columns {
+                    if board[row][col].isRevealed && !board[row][col].isMine {
+                        if checkAndRevealAroundCell(row: row, col: col) {
+                            madeProgress = true
+                        }
+                    }
+                }
+            }
+        } while madeProgress
+    }
+    
+    private func checkAndRevealAroundCell(row: Int, col: Int) -> Bool {
+        let neighborMineCount = board[row][col].neighborMineCount
+        var flagCount = 0
+        var unrevealed = [(Int, Int)]()
+        
+        for i in -1...1 {
+            for j in -1...1 {
+                let newRow = row + i
+                let newCol = col + j
+                if isValidPosition(row: newRow, col: newCol) {
+                    if board[newRow][newCol].isFlagged {
+                        flagCount += 1
+                    } else if !board[newRow][newCol].isRevealed {
+                        unrevealed.append((newRow, newCol))
+                    }
+                }
+            }
+        }
+        
+        var madeProgress = false
+        
+        if flagCount == neighborMineCount && !unrevealed.isEmpty {
+            for (r, c) in unrevealed {
+                if !board[r][c].isFlagged && !board[r][c].isRevealed {
+                    if board[r][c].isMine {
+                        gameStatus = .lost
+                        revealAllMines()
+                        return true
+                    }
+                    revealCellRecursively(row: r, col: c)
+                    madeProgress = true
+                }
+            }
+        }
+        
+        return madeProgress
     }
 }
